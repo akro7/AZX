@@ -1,1 +1,46 @@
+name: AZX Keys Store Bot
 
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+
+    env:
+      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+      OWNER_ID: ${{ secrets.OWNER_ID }}
+      BOT_USERNAME: ${{ secrets.BOT_USERNAME }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify stdlib modules
+        run: python3 -c "import sqlite3, asyncio, urllib.request; print('stdlib OK')"
+
+      - name: Restore persistent DB
+        uses: actions/cache@v4
+        with:
+          path: keys_store_bot.db
+          key: bot-db-${{ github.run_id }}
+          restore-keys: |
+            bot-db-
+
+      - name: Run bot
+        run: python3 keys_store_bot.py
+        timeout-minutes: 350
+
+      - name: Save DB snapshot
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: keys_store_bot.db
+          key: bot-db-${{ github.run_id }}
